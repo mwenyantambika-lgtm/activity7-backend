@@ -4,6 +4,7 @@ const cors = require("cors");
 const pool = require("./db");
 
 const app = express();
+app.set("trust proxy", 1);
 
 const origins = (process.env.CLIENT_ORIGINS || "")
   .split(",").map(value => value.trim()).filter(Boolean);
@@ -11,14 +12,7 @@ const origins = (process.env.CLIENT_ORIGINS || "")
 app.use(cors({ origin: origins }));
 app.use(express.json());
 
-// Temporary route, we'll replace it with the real API guide later
-app.get("/", (req, res) => {
-  res.send("Hello from my Activity 7 backend! 👋");
-});
-
-// Health check: proves the server and database both respond
-app.set("trust proxy", 1); // lets req.protocol be https on Render
-
+// API guide for the marker
 app.get("/", (req, res) => {
   const base = `${req.protocol}://${req.get("host")}`;
   res.status(200).send(`<!DOCTYPE html>
@@ -87,8 +81,20 @@ app.get("/", (req, res) => {
 </body></html>`);
 });
 
+// Health check: proves the server and database both respond
+app.get("/health", async (req, res) => {
+  try {
+    await pool.query("SELECT 1");
+    res.status(200).json({ status: "ok", database: "connected" });
+  } catch (error) {
+    console.error(error);
+    res.status(503).json({ status: "error", database: "unreachable" });
+  }
+});
+
 // Record routes
 app.use("/api/records", require("./routes/records"));
+
 // Unknown routes return JSON 404
 app.use((req, res) => {
   res.status(404).json({ message: "Route not found." });
