@@ -8,7 +8,7 @@ function isValidId(value) {
   return /^[1-9][0-9]*$/.test(value);
 }
 
-// The bouncer: checks the four editable fields from the data agreement
+// Check the four editable fields from the data agreement
 function validateRecord(body) {
   if (!body || typeof body !== "object" || Array.isArray(body)) {
     return { error: "Request body must be a JSON object." };
@@ -95,6 +95,7 @@ router.post("/", async (req, res, next) => {
     next(error);
   }
 });
+
 // PUT update a record
 router.put("/:id", async (req, res, next) => {
   try {
@@ -117,6 +118,25 @@ router.put("/:id", async (req, res, next) => {
       return res.status(404).json({ message: "Record not found." });
     }
     res.status(200).json(result.rows[0]);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// DELETE a record
+router.delete("/:id", async (req, res, next) => {
+  try {
+    if (!isValidId(req.params.id)) {
+      return res.status(400).json({ message: "Id must be a positive whole number." });
+    }
+    const result = await pool.query(
+      "DELETE FROM records WHERE id = $1 RETURNING id",
+      [req.params.id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "Record not found." });
+    }
+    res.status(200).json({ message: "Record deleted." });
   } catch (error) {
     next(error);
   }
